@@ -9,22 +9,24 @@ import (
 	"net/http"
 )
 
-func (r *request) Response() (body io.ReadCloser, cancel context.CancelFunc, err error) {
+func (r *request) Response() (resp *http.Response, cancel context.CancelFunc, err error) {
 	var req *http.Request
 	req, cancel, err = r.Request()
 	if err != nil {
 		return
 	}
-	resp, err := r.client.Do(req)
-	if err != nil {
-		return
-	}
+	resp, err = r.client.Do(req)
+	return
+}
+
+func (r *request) ResponseBody() (body io.ReadCloser, cancel context.CancelFunc, err error) {
+	resp, cancel, err := r.Response()
 	body = resp.Body
 	return
 }
 
 func (r *request) ResponseBuffer() (*bytes.Buffer, error) {
-	body, cancel, err := r.Response()
+	body, cancel, err := r.ResponseBody()
 	defer cancel()
 	if err != nil {
 		return nil, err
@@ -48,7 +50,7 @@ func (r *request) ResponseString() (string, error) {
 }
 
 func (r *request) ResponseJson(v any) error {
-	body, cancel, err := r.Response()
+	body, cancel, err := r.ResponseBody()
 	defer cancel()
 	if err != nil {
 		return err
@@ -58,7 +60,7 @@ func (r *request) ResponseJson(v any) error {
 }
 
 func (r *request) ResponseXML(v any) error {
-	body, cancel, err := r.Response()
+	body, cancel, err := r.ResponseBody()
 	defer cancel()
 	if err != nil {
 		return err
