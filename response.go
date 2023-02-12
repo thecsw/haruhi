@@ -9,6 +9,31 @@ import (
 	"net/http"
 )
 
+// Make a GET request and return the response as string.
+func (r *request) Get() (string, error) {
+	r.method = http.MethodGet
+	return r.ResponseString()
+}
+
+// Make a POST request and return the response as string.
+func (r *request) Post() (string, error) {
+	r.method = http.MethodPost
+	return r.ResponseString()
+}
+
+// Make a PUT request and return the response as string.
+func (r *request) Put() (string, error) {
+	r.method = http.MethodPut
+	return r.ResponseString()
+}
+
+// Make a DELETE request and return the response as string.
+func (r *request) Delete() (string, error) {
+	r.method = http.MethodDelete
+	return r.ResponseString()
+}
+
+// Make a request (parked) and get the response object with cancel.
 func (r *request) Response() (resp *http.Response, cancel context.CancelFunc, err error) {
 	var req *http.Request
 	req, cancel, err = r.Request()
@@ -19,12 +44,17 @@ func (r *request) Response() (resp *http.Response, cancel context.CancelFunc, er
 	return
 }
 
+// Make a request (parked) and get the body reader (needs closing) with cancel.
 func (r *request) ResponseBody() (body io.ReadCloser, cancel context.CancelFunc, err error) {
 	resp, cancel, err := r.Response()
+	if err != nil {
+		return
+	}
 	body = resp.Body
 	return
 }
 
+// Make a request and get the response as `*bytes.Buffer`.
 func (r *request) ResponseBuffer() (*bytes.Buffer, error) {
 	body, cancel, err := r.ResponseBody()
 	defer cancel()
@@ -33,22 +63,31 @@ func (r *request) ResponseBuffer() (*bytes.Buffer, error) {
 	}
 	defer body.Close()
 	buf := new(bytes.Buffer)
-	if _, err := io.Copy(buf, body); err != nil && err != io.EOF {
-		return buf, err
+	if _, err = buf.ReadFrom(body); err != nil {
+		return nil, err
 	}
 	return buf, nil
 }
 
+// Make a request and get the response as bytes.
 func (r *request) ResponseBytes() ([]byte, error) {
 	buf, err := r.ResponseBuffer()
+	if err != nil {
+		return nil, err
+	}
 	return buf.Bytes(), err
 }
 
+// Make a request and get the response as a string.
 func (r *request) ResponseString() (string, error) {
 	buf, err := r.ResponseBuffer()
+	if err != nil {
+		return "", err
+	}
 	return buf.String(), err
 }
 
+// Make a request and decode the JSON response into given interface.
 func (r *request) ResponseJson(v any) error {
 	body, cancel, err := r.ResponseBody()
 	defer cancel()
@@ -59,6 +98,7 @@ func (r *request) ResponseJson(v any) error {
 	return json.NewDecoder(body).Decode(v)
 }
 
+// Make a request and decode the XML response into given interface.
 func (r *request) ResponseXML(v any) error {
 	body, cancel, err := r.ResponseBody()
 	defer cancel()
