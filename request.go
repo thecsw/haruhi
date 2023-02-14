@@ -20,43 +20,36 @@ import (
 type Request struct {
 	// Method to use for HTTP request, defaults to "GET".
 	method string
-
 	// URL that user wants to query, should include schema + domain.
 	url string
-
 	// Path to look up on the given URL.
 	path string
-
 	// Parameters to use in the request's search parameters.
 	params url.Values
-
 	// Body to pass in the request, defaults to `nil` (no body).
 	body io.Reader
-
 	// Headers to use in the request (will overwrite the defaults).
 	headers http.Header
-
 	// HTTP client to use, defaults to `http.DefaultClient`.
 	client *http.Client
-
 	// Context to use in the request, defaults to `context.TODO()`.
 	ctx context.Context
-
 	// Timeout for the request, defaults to 0 (meaning no timeout).
 	timeout time.Duration
-
 	// Deadline for the request, defaults to `nil` (no deadline).
 	deadline *time.Time
 }
 
 // URL will start building a request with the given URL (scheme+domain),
 // an example is `https://go.dev` (notice without the path or parameters).
-func URL(url string) *Request {
+func URL(what string) *Request {
 	return &Request{
-		url:    strings.TrimSuffix(url, "/"),
-		method: http.MethodGet,
-		client: http.DefaultClient,
-		ctx:    context.TODO(),
+		url:     strings.TrimSuffix(what, "/"),
+		method:  http.MethodGet,
+		client:  http.DefaultClient,
+		ctx:     context.TODO(),
+		headers: http.Header{},
+		params:  url.Values{},
 	}
 }
 
@@ -75,7 +68,7 @@ func (r *Request) Path(path string) *Request {
 
 // Parameters to use in the URL.
 func (r *Request) Params(params url.Values) *Request {
-	r.params = params
+	mergeParams(r.params, params)
 	return r
 }
 
