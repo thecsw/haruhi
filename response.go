@@ -9,31 +9,31 @@ import (
 	"net/http"
 )
 
-// Make a GET request and return the response as string.
+// Make a blocking GET request and return the response as string.
 func (r *Request) Get() (string, error) {
 	r.method = http.MethodGet
 	return r.ResponseString()
 }
 
-// Make a POST request and return the response as string.
+// Make a blocking POST request and return the response as string.
 func (r *Request) Post() (string, error) {
 	r.method = http.MethodPost
 	return r.ResponseString()
 }
 
-// Make a PUT request and return the response as string.
+// Make a blocking PUT request and return the response as string.
 func (r *Request) Put() (string, error) {
 	r.method = http.MethodPut
 	return r.ResponseString()
 }
 
-// Make a DELETE request and return the response as string.
+// Make a blocking DELETE request and return the response as string.
 func (r *Request) Delete() (string, error) {
 	r.method = http.MethodDelete
 	return r.ResponseString()
 }
 
-// Make a request (parked) and get the response object with cancel.
+// Make a non-blocking request and get the response object with cancel.
 func (r *Request) Response() (resp *http.Response, cancel context.CancelFunc, err error) {
 	var req *http.Request
 	req, cancel, err = r.Request()

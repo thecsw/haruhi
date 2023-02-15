@@ -66,6 +66,14 @@ func (r *Request) Path(path string) *Request {
 	return r
 }
 
+// Context will overwrite the current context with given value.
+func (r *Request) Context(ctx context.Context) *Request {
+	if ctx != nil {
+		r.ctx = ctx
+	}
+	return r
+}
+
 // Parameters to use in the URL.
 func (r *Request) Params(params url.Values) *Request {
 	mergeParams(r.params, params)
@@ -74,7 +82,9 @@ func (r *Request) Params(params url.Values) *Request {
 
 // HTTP client to use, defaults to `http.DefaultClient`.
 func (r *Request) Client(client *http.Client) *Request {
-	r.client = client
+	if client != nil {
+		r.client = client
+	}
 	return r
 }
 
@@ -88,9 +98,9 @@ func (r *Request) Timeout(timeout time.Duration) *Request {
 
 // Deadline for the request (absolute time), defaults to `nil`
 // (no deadline).
-func (r *Request) Deadline(deadline time.Time) *Request {
+func (r *Request) Deadline(deadline *time.Time) *Request {
 	if r.timeout == 0 {
-		r.deadline = &deadline
+		r.deadline = deadline
 	}
 	return r
 }
@@ -119,6 +129,9 @@ func (r *Request) BodyString(body string) *Request {
 
 // BodyXML will encode given interfact/instance into JSON and use that as body.
 func (r *Request) BodyJson(body any) *Request {
+	if body == nil {
+		return r
+	}
 	buf := new(bytes.Buffer)
 	if err := json.NewEncoder(buf).Encode(body); err != nil {
 		err = errors.Wrap(err, "couldn't encode into json")
@@ -134,6 +147,9 @@ func (r *Request) BodyJson(body any) *Request {
 
 // BodyXML will encode given interfact/instance into XML and use that as body.
 func (r *Request) BodyXML(body any) *Request {
+	if body == nil {
+		return r
+	}
 	buf := new(bytes.Buffer)
 	if err := xml.NewEncoder(buf).Encode(body); err != nil {
 		err = errors.Wrap(err, "couldn't encode into xml")
@@ -149,6 +165,9 @@ func (r *Request) BodyXML(body any) *Request {
 
 // BodyFormData will take values and send them as formdata.
 func (r *Request) BodyFormData(body url.Values) *Request {
+	if body == nil {
+		return r
+	}
 	buf := new(bytes.Buffer)
 	writer := multipart.NewWriter(buf)
 	defer writer.Close()
@@ -163,7 +182,8 @@ func (r *Request) BodyFormData(body url.Values) *Request {
 
 // Request will build the final haruhi request.
 func (r *Request) Request() (*http.Request, context.CancelFunc, error) {
-	var cancel context.CancelFunc = func() {}
+	var cancel context.CancelFunc
+	r.ctx, cancel = context.WithCancel(r.ctx)
 	if r.timeout > 0 {
 		r.ctx, cancel = context.WithTimeout(r.ctx, r.timeout)
 	} else if r.deadline != nil {
