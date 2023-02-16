@@ -23,13 +23,3 @@ func mergeHeaders(dst http.Header, src http.Header, unset bool) {
 		}
 	}
 }
-
-func addForwardSlash(what string) string {
-	if len(what) < 1 {
-		return what
-	}
-	if what[0] != '/' {
-		return "/" + what
-	}
-	return what
-}

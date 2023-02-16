@@ -44,7 +44,7 @@ type Request struct {
 // an example is `https://go.dev` (notice without the path or parameters).
 func URL(what string) *Request {
 	return &Request{
-		url:     strings.TrimSuffix(what, "/"),
+		url:     what,
 		method:  http.MethodGet,
 		client:  http.DefaultClient,
 		ctx:     context.TODO(),
@@ -62,7 +62,7 @@ func (r *Request) Method(method string) *Request {
 
 // Path to navigate to, leading slash will be added if missing.
 func (r *Request) Path(path string) *Request {
-	r.path = addForwardSlash(path)
+	r.path = path
 	return r
 }
 
