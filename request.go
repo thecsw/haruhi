@@ -38,6 +38,10 @@ type Request struct {
 	timeout time.Duration
 	// Deadline for the request, defaults to `nil` (no deadline).
 	deadline *time.Time
+	// Username for basic auth.
+	username string
+	// Password for basic auth.
+	password string
 }
 
 // URL will start building a request with the given URL (scheme+domain),
@@ -127,6 +131,14 @@ func (r *Request) BodyString(body string) *Request {
 	return r.Body(strings.NewReader(body))
 }
 
+// BasicAuth sets the request's Authorization header to use HTTP
+// Basic Authentication with the provided username and password.
+func (r *Request) BasicAuth(username, password string) *Request {
+	r.username = username
+	r.password = password
+	return r
+}
+
 // BodyXML will encode given interfact/instance into JSON and use that as body.
 func (r *Request) BodyJson(body any) *Request {
 	if body == nil {
@@ -192,6 +204,10 @@ func (r *Request) Request() (*http.Request, context.CancelFunc, error) {
 
 	req, err := http.NewRequestWithContext(r.ctx, r.method, r.url+r.path, r.body)
 	mergeHeaders(req.Header, r.headers, true)
+
+	if len(r.username) > 0 || len(r.password) > 0 {
+		req.SetBasicAuth(r.username, r.password)
+	}
 
 	q := req.URL.Query()
 	mergeParams(q, r.params)
