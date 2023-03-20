@@ -41,6 +41,11 @@ func (r *Request) Response() (resp *http.Response, cancel context.CancelFunc, er
 		return
 	}
 	resp, err = r.client.Do(req)
+
+	// Call the error handler if it has been set.
+	if r.errorHandler != nil {
+		r.errorHandler(resp, err)
+	}
 	return
 }
 

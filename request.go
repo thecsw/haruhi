@@ -42,6 +42,8 @@ type Request struct {
 	username string
 	// Password for basic auth.
 	password string
+	// errorHandler is called if set by the user.
+	errorHandler func(*http.Response, error)
 }
 
 // URL will start building a request with the given URL (scheme+domain),
@@ -129,6 +131,11 @@ func (r *Request) BodyBytes(body []byte) *Request {
 // BodyString will use string as body.
 func (r *Request) BodyString(body string) *Request {
 	return r.Body(strings.NewReader(body))
+}
+
+func (r *Request) ErrorHandler(errorHandler func(*http.Response, error)) *Request {
+	r.errorHandler = errorHandler
+	return r
 }
 
 // BasicAuth sets the request's Authorization header to use HTTP
