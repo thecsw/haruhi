@@ -3,6 +3,8 @@
 Welcome! This is Sandy's take on making a simple yet powerful enough
 HTTP library. Inspired by [python's requests](https://github.com/psf/requests).
 
+![haruhi](haruhi.gif)
+
 ## Motivation
 
 When it comes to making network requests, I find myself writing a lot of repetitive
