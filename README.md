@@ -3,7 +3,9 @@
 Welcome! This is Sandy's take on making a simple yet powerful enough
 HTTP library. Inspired by [python's requests](https://github.com/psf/requests).
 
+<div align='center'>
 ![haruhi](haruhi.gif)
+</div>
 
 ## Motivation
 
