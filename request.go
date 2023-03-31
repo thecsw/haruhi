@@ -210,6 +210,9 @@ func (r *Request) Request() (*http.Request, context.CancelFunc, error) {
 	}
 
 	req, err := http.NewRequestWithContext(r.ctx, r.method, r.url+r.path, r.body)
+	if req == nil || err != nil {
+		return req, cancel, errors.Wrap(err, "haruhi failed to create request")
+	}
 	mergeHeaders(req.Header, r.headers, true)
 
 	if len(r.username) > 0 || len(r.password) > 0 {
