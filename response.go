@@ -51,6 +51,10 @@ func (r *Request) Response() (resp *http.Response, cancel context.CancelFunc, er
 		codeHandler(resp)
 		return
 	}
+	if r.statusExpectation > 0 && resp.StatusCode != r.statusExpectation {
+		r.ifNotStatusCodeHandler(resp)
+		return
+	}
 	return
 }
 

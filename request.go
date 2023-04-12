@@ -18,10 +18,13 @@ import (
 // Request is an internal "staging" struct used when we want
 // to track of what kind of Request user wants to make.
 type Request struct {
-	// Body to pass in the request, defaults to `nil` (no body).
-	body io.Reader
 	// Context to use in the request, defaults to `context.TODO()`.
 	ctx context.Context
+	// Body to pass in the request, defaults to `nil` (no body).
+	body io.Reader
+	// ifNotStatusCodeHandler is called if the status code is not the one
+	// we expect.
+	ifNotStatusCodeHandler func(*http.Response)
 	// HTTP client to use, defaults to `http.DefaultClient`.
 	client *http.Client
 	// Parameters to use in the request's search parameters.
@@ -34,16 +37,18 @@ type Request struct {
 	errorHandler func(*http.Response, error)
 	// statusCodeHandlers gets invoked on given status codes.
 	statusCodeHandlers map[int]func(*http.Response)
+	// URL that user wants to query, should include schema + domain.
+	url string
 	// Path to look up on the given URL.
 	path string
 	// Method to use for HTTP request, defaults to "GET".
 	method string
-	// URL that user wants to query, should include schema + domain.
-	url string
 	// Username for basic auth.
 	username string
 	// Password for basic auth.
 	password string
+	// statusExpectation is the status code we expect to get.
+	statusExpectation int
 	// Timeout for the request, defaults to 0 (meaning no timeout).
 	timeout time.Duration
 }
@@ -77,7 +82,7 @@ func (r *Request) Path(path string) *Request {
 
 // Context will overwrite the current context with given value.
 func (r *Request) Context(ctx context.Context) *Request {
-	if ctx != nil {
+	if shouldSetOrPanic(ctx, "context") {
 		r.ctx = ctx
 	}
 	return r
@@ -97,7 +102,7 @@ func (r *Request) Param(name, value string) *Request {
 
 // HTTP client to use, defaults to `http.DefaultClient`.
 func (r *Request) Client(client *http.Client) *Request {
-	if client != nil {
+	if shouldSetOrPanic(client, "client") {
 		r.client = client
 	}
 	return r
@@ -105,7 +110,7 @@ func (r *Request) Client(client *http.Client) *Request {
 
 // Timeout for the request, defaults to 0 (meaning no timeout).
 func (r *Request) Timeout(timeout time.Duration) *Request {
-	if r.deadline == nil {
+	if shouldSetOrPanic(timeout, "timeout") {
 		r.timeout = timeout
 	}
 	return r
@@ -151,6 +156,9 @@ func (r *Request) BodyString(body string) *Request {
 // ErrorHandler will set the error handler to be called if the request
 // fails.
 func (r *Request) ErrorHandler(errorHandler func(*http.Response, error)) *Request {
+	if shouldSetOrPanic(errorHandler, "handler") {
+		r.errorHandler = errorHandler
+	}
 	r.errorHandler = errorHandler
 	return r
 }
@@ -158,7 +166,19 @@ func (r *Request) ErrorHandler(errorHandler func(*http.Response, error)) *Reques
 // StatusCodeHandler will set the handler to be called if the request
 // returns given status code.
 func (r *Request) StatusCodeHandler(statusCode int, handler func(*http.Response)) *Request {
-	r.statusCodeHandlers[statusCode] = handler
+	if shouldSetOrPanic(handler, "handler") {
+		r.statusCodeHandlers[statusCode] = handler
+	}
+	return r
+}
+
+// IfNotExpectedStatusCode will set the handler to be called if the request
+// does not return the expected status code.
+func (r *Request) IfNotExpectedStatusCode(statusCode int, handler func(*http.Response)) *Request {
+	if shouldSetOrPanic(handler, "handler") {
+		r.statusExpectation = statusCode
+		r.ifNotStatusCodeHandler = handler
+	}
 	return r
 }
 
@@ -248,4 +268,15 @@ func (r *Request) Request() (*http.Request, context.CancelFunc, error) {
 	req.URL.RawQuery = q.Encode()
 
 	return req, cancel, err
+}
+
+// shouldPanic is a helper function to check if we should panic or not.
+func shouldSetOrPanic(src any, name string) bool {
+	if src == nil {
+		if shouldPanic {
+			panic(name + " cannot be nil")
+		}
+		return false
+	}
+	return true
 }
