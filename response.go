@@ -43,8 +43,13 @@ func (r *Request) Response() (resp *http.Response, cancel context.CancelFunc, er
 	resp, err = r.client.Do(req)
 
 	// Call the error handler if it has been set.
-	if r.errorHandler != nil {
+	if r.errorHandler != nil && err != nil {
 		r.errorHandler(resp, err)
+		return
+	}
+	if codeHandler, found := r.statusCodeHandlers[resp.StatusCode]; found {
+		codeHandler(resp)
+		return
 	}
 	return
 }

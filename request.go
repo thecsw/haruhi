@@ -18,44 +18,47 @@ import (
 // Request is an internal "staging" struct used when we want
 // to track of what kind of Request user wants to make.
 type Request struct {
+	// Body to pass in the request, defaults to `nil` (no body).
+	body io.Reader
+	// Context to use in the request, defaults to `context.TODO()`.
+	ctx context.Context
+	// HTTP client to use, defaults to `http.DefaultClient`.
+	client *http.Client
+	// Parameters to use in the request's search parameters.
+	params url.Values
+	// Headers to use in the request (will overwrite the defaults).
+	headers http.Header
+	// Deadline for the request, defaults to `nil` (no deadline).
+	deadline *time.Time
+	// errorHandler is called if set by the user.
+	errorHandler func(*http.Response, error)
+	// statusCodeHandlers gets invoked on given status codes.
+	statusCodeHandlers map[int]func(*http.Response)
+	// Path to look up on the given URL.
+	path string
 	// Method to use for HTTP request, defaults to "GET".
 	method string
 	// URL that user wants to query, should include schema + domain.
 	url string
-	// Path to look up on the given URL.
-	path string
-	// Parameters to use in the request's search parameters.
-	params url.Values
-	// Body to pass in the request, defaults to `nil` (no body).
-	body io.Reader
-	// Headers to use in the request (will overwrite the defaults).
-	headers http.Header
-	// HTTP client to use, defaults to `http.DefaultClient`.
-	client *http.Client
-	// Context to use in the request, defaults to `context.TODO()`.
-	ctx context.Context
-	// Timeout for the request, defaults to 0 (meaning no timeout).
-	timeout time.Duration
-	// Deadline for the request, defaults to `nil` (no deadline).
-	deadline *time.Time
 	// Username for basic auth.
 	username string
 	// Password for basic auth.
 	password string
-	// errorHandler is called if set by the user.
-	errorHandler func(*http.Response, error)
+	// Timeout for the request, defaults to 0 (meaning no timeout).
+	timeout time.Duration
 }
 
 // URL will start building a request with the given URL (scheme+domain),
 // an example is `https://go.dev` (notice without the path or parameters).
 func URL(what string) *Request {
 	return &Request{
-		url:     what,
-		method:  http.MethodGet,
-		client:  http.DefaultClient,
-		ctx:     context.TODO(),
-		headers: http.Header{},
-		params:  url.Values{},
+		url:                what,
+		method:             http.MethodGet,
+		client:             http.DefaultClient,
+		ctx:                context.TODO(),
+		headers:            http.Header{},
+		params:             url.Values{},
+		statusCodeHandlers: map[int]func(*http.Response){},
 	}
 }
 
@@ -83,6 +86,12 @@ func (r *Request) Context(ctx context.Context) *Request {
 // Parameters to use in the URL.
 func (r *Request) Params(params url.Values) *Request {
 	mergeParams(r.params, params)
+	return r
+}
+
+// Parameters to use in the URL.
+func (r *Request) Param(name, value string) *Request {
+	r.params.Add(name, value)
 	return r
 }
 
@@ -117,6 +126,12 @@ func (r *Request) Headers(headers http.Header) *Request {
 	return r
 }
 
+// Headers will record headers to use in the request, will override defaults.
+func (r *Request) Header(name, value string) *Request {
+	r.headers.Add(name, value)
+	return r
+}
+
 // Body tells us we need to read the body request from the reader.
 func (r *Request) Body(body io.Reader) *Request {
 	r.body = body
@@ -133,8 +148,17 @@ func (r *Request) BodyString(body string) *Request {
 	return r.Body(strings.NewReader(body))
 }
 
+// ErrorHandler will set the error handler to be called if the request
+// fails.
 func (r *Request) ErrorHandler(errorHandler func(*http.Response, error)) *Request {
 	r.errorHandler = errorHandler
+	return r
+}
+
+// StatusCodeHandler will set the handler to be called if the request
+// returns given status code.
+func (r *Request) StatusCodeHandler(statusCode int, handler func(*http.Response)) *Request {
+	r.statusCodeHandlers[statusCode] = handler
 	return r
 }
 
