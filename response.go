@@ -43,16 +43,20 @@ func (r *Request) Response() (resp *http.Response, cancel context.CancelFunc, er
 	resp, err = r.client.Do(req)
 
 	// Call the error handler if it has been set.
-	if r.errorHandler != nil && err != nil {
-		r.errorHandler(resp, err)
+	if err != nil {
+		if r.errorHandler != nil {
+			err = r.errorHandler(resp, err)
+		}
 		return
 	}
+	// If a handler for this status code is registered, call it.
 	if codeHandler, found := r.statusCodeHandlers[resp.StatusCode]; found {
-		codeHandler(resp)
+		err = codeHandler(resp)
 		return
 	}
+	// If a status code expectation is set, check it.
 	if r.statusExpectation > 0 && resp.StatusCode != r.statusExpectation {
-		r.ifNotStatusCodeHandler(resp)
+		err = r.ifNotStatusCodeHandler(resp)
 		return
 	}
 	return

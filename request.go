@@ -24,7 +24,7 @@ type Request struct {
 	body io.Reader
 	// ifNotStatusCodeHandler is called if the status code is not the one
 	// we expect.
-	ifNotStatusCodeHandler func(*http.Response)
+	ifNotStatusCodeHandler func(*http.Response) error
 	// HTTP client to use, defaults to `http.DefaultClient`.
 	client *http.Client
 	// Parameters to use in the request's search parameters.
@@ -34,9 +34,9 @@ type Request struct {
 	// Deadline for the request, defaults to `nil` (no deadline).
 	deadline *time.Time
 	// errorHandler is called if set by the user.
-	errorHandler func(*http.Response, error)
+	errorHandler func(*http.Response, error) error
 	// statusCodeHandlers gets invoked on given status codes.
-	statusCodeHandlers map[int]func(*http.Response)
+	statusCodeHandlers map[int]func(*http.Response) error
 	// URL that user wants to query, should include schema + domain.
 	url string
 	// Path to look up on the given URL.
@@ -63,7 +63,7 @@ func URL(what string) *Request {
 		ctx:                context.TODO(),
 		headers:            http.Header{},
 		params:             url.Values{},
-		statusCodeHandlers: map[int]func(*http.Response){},
+		statusCodeHandlers: map[int]func(*http.Response) error{},
 	}
 }
 
@@ -155,7 +155,7 @@ func (r *Request) BodyString(body string) *Request {
 
 // ErrorHandler will set the error handler to be called if the request
 // fails.
-func (r *Request) ErrorHandler(errorHandler func(*http.Response, error)) *Request {
+func (r *Request) ErrorHandler(errorHandler func(*http.Response, error) error) *Request {
 	if shouldSetOrPanic(errorHandler, "handler") {
 		r.errorHandler = errorHandler
 	}
@@ -165,7 +165,7 @@ func (r *Request) ErrorHandler(errorHandler func(*http.Response, error)) *Reques
 
 // StatusCodeHandler will set the handler to be called if the request
 // returns given status code.
-func (r *Request) StatusCodeHandler(statusCode int, handler func(*http.Response)) *Request {
+func (r *Request) StatusCodeHandler(statusCode int, handler func(*http.Response) error) *Request {
 	if shouldSetOrPanic(handler, "handler") {
 		r.statusCodeHandlers[statusCode] = handler
 	}
@@ -174,7 +174,7 @@ func (r *Request) StatusCodeHandler(statusCode int, handler func(*http.Response)
 
 // IfNotExpectedStatusCode will set the handler to be called if the request
 // does not return the expected status code.
-func (r *Request) IfNotExpectedStatusCode(statusCode int, handler func(*http.Response)) *Request {
+func (r *Request) IfNotExpectedStatusCode(statusCode int, handler func(*http.Response) error) *Request {
 	if shouldSetOrPanic(handler, "handler") {
 		r.statusExpectation = statusCode
 		r.ifNotStatusCodeHandler = handler
