@@ -66,6 +66,9 @@ Haruhi of course, supports more funtionality that is aimed to be simple and stra
 Entire codebase is documented, so head on to [go docs](https://pkg.go.dev/github.com/thecsw/haruhi)
 to see what else she can do. 
 
+Bad inputs, like setting handlers to `nil` will be ignored. Fatal errors when creating a request
+through Go or serializing bodies will be called with `log.Fatalf`.
+
 Have fun requesting!
 
 ## Similar projects

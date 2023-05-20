@@ -5,14 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"encoding/xml"
+	"fmt"
 	"io"
+	"log"
 	"mime/multipart"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
-
-	"github.com/pkg/errors"
 )
 
 // Request is an internal "staging" struct used when we want
@@ -82,7 +82,7 @@ func (r *Request) Path(path string) *Request {
 
 // Context will overwrite the current context with given value.
 func (r *Request) Context(ctx context.Context) *Request {
-	if shouldSetOrPanic(ctx, "context") {
+	if ctx != nil {
 		r.ctx = ctx
 	}
 	return r
@@ -102,7 +102,7 @@ func (r *Request) Param(name, value string) *Request {
 
 // HTTP client to use, defaults to `http.DefaultClient`.
 func (r *Request) Client(client *http.Client) *Request {
-	if shouldSetOrPanic(client, "client") {
+	if client != nil {
 		r.client = client
 	}
 	return r
@@ -110,9 +110,7 @@ func (r *Request) Client(client *http.Client) *Request {
 
 // Timeout for the request, defaults to 0 (meaning no timeout).
 func (r *Request) Timeout(timeout time.Duration) *Request {
-	if shouldSetOrPanic(timeout, "timeout") {
-		r.timeout = timeout
-	}
+	r.timeout = timeout
 	return r
 }
 
@@ -156,7 +154,7 @@ func (r *Request) BodyString(body string) *Request {
 // ErrorHandler will set the error handler to be called if the request
 // fails.
 func (r *Request) ErrorHandler(errorHandler func(*http.Response, error) error) *Request {
-	if shouldSetOrPanic(errorHandler, "handler") {
+	if errorHandler != nil {
 		r.errorHandler = errorHandler
 	}
 	r.errorHandler = errorHandler
@@ -166,7 +164,7 @@ func (r *Request) ErrorHandler(errorHandler func(*http.Response, error) error) *
 // StatusCodeHandler will set the handler to be called if the request
 // returns given status code.
 func (r *Request) StatusCodeHandler(statusCode int, handler func(*http.Response) error) *Request {
-	if shouldSetOrPanic(handler, "handler") {
+	if handler != nil {
 		r.statusCodeHandlers[statusCode] = handler
 	}
 	return r
@@ -175,7 +173,7 @@ func (r *Request) StatusCodeHandler(statusCode int, handler func(*http.Response)
 // IfNotExpectedStatusCode will set the handler to be called if the request
 // does not return the expected status code.
 func (r *Request) IfNotExpectedStatusCode(statusCode int, handler func(*http.Response) error) *Request {
-	if shouldSetOrPanic(handler, "handler") {
+	if handler != nil {
 		r.statusExpectation = statusCode
 		r.ifNotStatusCodeHandler = handler
 	}
@@ -197,13 +195,8 @@ func (r *Request) BodyJson(body any) *Request {
 	}
 	buf := new(bytes.Buffer)
 	if err := json.NewEncoder(buf).Encode(body); err != nil {
-		err = errors.Wrap(err, "couldn't encode into json")
-		if shouldPanic {
-			logger.Panicln("panic:", err.Error())
-		}
-		// Otherwise, set the body to nil and log it.
-		logger.Println("leaving body empty:", err.Error())
-		return r
+		// error out
+		log.Fatalf("json encoding: %v", err)
 	}
 	return r.Body(buf)
 }
@@ -215,13 +208,8 @@ func (r *Request) BodyXML(body any) *Request {
 	}
 	buf := new(bytes.Buffer)
 	if err := xml.NewEncoder(buf).Encode(body); err != nil {
-		err = errors.Wrap(err, "couldn't encode into xml")
-		if shouldPanic {
-			logger.Panicln("panic:", err.Error())
-		}
-		// Otherwise, set the body to nil and log it.
-		logger.Println("leaving body empty:", err.Error())
-		return r
+		// error out
+		log.Fatalf("xml encoding: %v", err)
 	}
 	return r.Body(buf)
 }
@@ -236,7 +224,8 @@ func (r *Request) BodyFormData(body url.Values) *Request {
 	defer writer.Close()
 	for key, values := range body {
 		if err := writer.WriteField(key, strings.Join(values, "")); err != nil {
-			logger.Printf("couldn't write form field %s: %s\n", key, err)
+			// error out
+			log.Fatalf("writing form field %s: %v", key, err)
 		}
 	}
 	r.headers.Add("Content-Type", writer.FormDataContentType())
@@ -255,7 +244,7 @@ func (r *Request) Request() (*http.Request, context.CancelFunc, error) {
 
 	req, err := http.NewRequestWithContext(r.ctx, r.method, r.url+r.path, r.body)
 	if req == nil || err != nil {
-		return req, cancel, errors.Wrap(err, "haruhi failed to create request")
+		return req, cancel, fmt.Errorf("new request with context: %v", err)
 	}
 	mergeHeaders(req.Header, r.headers, true)
 
@@ -268,15 +257,4 @@ func (r *Request) Request() (*http.Request, context.CancelFunc, error) {
 	req.URL.RawQuery = q.Encode()
 
 	return req, cancel, err
-}
-
-// shouldPanic is a helper function to check if we should panic or not.
-func shouldSetOrPanic(src any, name string) bool {
-	if src == nil {
-		if shouldPanic {
-			panic(name + " cannot be nil")
-		}
-		return false
-	}
-	return true
 }
