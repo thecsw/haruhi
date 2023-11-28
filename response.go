@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"encoding/xml"
+	"errors"
 	"io"
 	"net/http"
 )
@@ -47,6 +48,11 @@ func (r *Request) Response() (resp *http.Response, cancel context.CancelFunc, er
 		if r.errorHandler != nil {
 			err = r.errorHandler(resp, err)
 		}
+		return
+	}
+	// What if the response was nil?
+	if resp == nil {
+		err = errors.New("nil response from http client")
 		return
 	}
 	// If a handler for this status code is registered, call it.

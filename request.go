@@ -252,7 +252,10 @@ func (r *Request) Request() (*http.Request, context.CancelFunc, error) {
 		req.SetBasicAuth(r.username, r.password)
 	}
 
-	q := req.URL.Query()
+	q, err := url.ParseQuery(req.URL.RawQuery)
+	if q == nil {
+		return req, cancel, fmt.Errorf("url could not be parsed")
+	}
 	mergeParams(q, r.params)
 	req.URL.RawQuery = q.Encode()
 
